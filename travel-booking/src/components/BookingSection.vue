@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto">
       <div class="bg-white p-6 rounded-lg shadow-sm space-y-6">
         <!-- Trip Type Buttons -->
@@ -196,10 +196,16 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
-import { searchAirports } from '../utils/airportData';
+defineEmits(['search']);
+
+import { ref, watch, computed, onMounted } from 'vue';
+import { searchAirports } from '../utils/api';
 import Datepicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
+
+onMounted(() => {
+  console.log('BookingSection mounted');
+});
 
 // Search form data
 const fromQuery = ref('');
@@ -331,17 +337,12 @@ watch(fromQuery, async (newQuery) => {
     fromResults.value = [];
     return;
   }
-  
-  isLoadingFrom.value = true;
   fromSearchTimeout = setTimeout(async () => {
     try {
-      const results = await searchAirports(newQuery);
-      fromResults.value = results;
+      fromResults.value = await searchAirports(newQuery);
     } catch (error) {
       console.error('Error searching airports:', error);
       fromResults.value = [];
-    } finally {
-      isLoadingFrom.value = false;
     }
   }, 300);
 });
@@ -354,17 +355,12 @@ watch(toQuery, async (newQuery) => {
     toResults.value = [];
     return;
   }
-  
-  isLoadingTo.value = true;
   toSearchTimeout = setTimeout(async () => {
     try {
-      const results = await searchAirports(newQuery);
-      toResults.value = results;
+      toResults.value = await searchAirports(newQuery);
     } catch (error) {
       console.error('Error searching airports:', error);
       toResults.value = [];
-    } finally {
-      isLoadingTo.value = false;
     }
   }, 300);
 });
@@ -402,14 +398,19 @@ function handleSearch() {
     return;
   }
 
-  console.log('Searching with:', {
-    from: selectedFromLocation.value,
-    to: selectedToLocation.value,
-    departureDate: departureDate.value,
-    returnDate: returnDate.value,
-    travelers: travelers.value,
-    class: travelClass.value
-  });
+  const searchParams = {
+    from: selectedFromLocation.value.code,
+    to: selectedToLocation.value.code,
+    departDate: formatDate(departureDate.value),
+    returnDate: returnDate.value ? formatDate(returnDate.value) : null,
+    passengers: [{
+      type: 'adult',
+      count: 1
+    }],
+    cabin: 'E'
+  };
+
+  emit('search', searchParams);
 }
 </script>
 

@@ -8,8 +8,17 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [vue()],
     define: {
-      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'true',
     },
-    envPrefix: 'VITE_'
+    envPrefix: 'VITE_',
+    server: {
+      hmr: true,
+      watch: {
+        usePolling: true
+      }
+    },
+    build: {
+      sourcemap: true
+    }
   }
 })
