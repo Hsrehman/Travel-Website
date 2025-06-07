@@ -302,12 +302,53 @@ const sortedFlights = computed(() => {
 });
 
 // Methods
-const formatTime = (dateString) => {
-  return new Date(dateString).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+const formatTime = (timeValue) => {
+  if (!timeValue) return 'N/A';
+  
+  // Handle time-only strings (HH:MM)
+  if (typeof timeValue === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(timeValue)) {
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    
+    // Return in 24-hour format
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+  
+  // For full date strings (existing code path)
+  let date;
+  
+  try {
+    // Check if it's ISO format
+    if (typeof timeValue === 'string' && timeValue.includes('T')) {
+      date = new Date(timeValue);
+    } 
+    // Check if it's a timestamp
+    else if (!isNaN(Number(timeValue))) {
+      date = new Date(Number(timeValue));
+    }
+    // Handle date string without time
+    else if (typeof timeValue === 'string' && timeValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      date = new Date(`${timeValue}T00:00:00`);
+    }
+    // Default case
+    else {
+      date = new Date(timeValue);
+    }
+    
+    // Validate the date
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date format:', timeValue);
+      return 'N/A';
+    }
+    
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch (err) {
+    console.error('Error formatting time:', err);
+    return 'N/A';
+  }
 };
 
 const formatDuration = (minutes) => {
@@ -344,36 +385,166 @@ if (props.flights.length) {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  color: #333;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.sort-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sort-options label {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.sort-select {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: white;
+  font-size: 14px;
+  min-width: 180px;
+  color: #374151;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.sort-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.filter-toggle {
+  padding: 8px 16px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #4b5563;
+  transition: all 0.2s ease;
+}
+
+.filter-toggle:hover {
+  background-color: #e5e7eb;
 }
 
 .content {
   display: flex;
-  gap: 20px;
+  gap: 24px;
 }
 
 /* Filters Panel */
 .filters-panel {
   width: 280px;
   background: white;
-  padding: 20px;
+  padding: 24px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   height: fit-content;
+  border: 1px solid #f3f4f6;
+}
+
+.filters-panel h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .filter-section {
   margin-bottom: 24px;
 }
 
+.filter-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
 .filter-section:last-child {
   margin-bottom: 0;
+}
+
+.price-range {
+  margin-top: 16px;
+}
+
+.price-range input[type="range"] {
+  width: 100%;
+  accent-color: #3b82f6;
+}
+
+.price-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.airline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.checkbox-label, .radio-label {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  color: #4b5563;
+}
+
+.checkbox-label input, .radio-label input {
+  margin-right: 8px;
+  accent-color: #3b82f6;
+}
+
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.time-slot {
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  background-color: white;
+  transition: all 0.2s;
+}
+
+.time-slot.active {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.time-slot:hover:not(.active) {
+  background-color: #f9fafb;
 }
 
 /* Results List */
@@ -381,17 +552,218 @@ if (props.flights.length) {
   flex: 1;
 }
 
+.no-results {
+  text-align: center;
+  padding: 40px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.reset-btn {
+  margin-top: 16px;
+  padding: 8px 24px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reset-btn:hover {
+  background-color: #2563eb;
+}
+
+.flight-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .flight-card {
   background: white;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  border: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .flight-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
+}
+
+.airline-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.airline-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.airline-details {
+  flex: 1;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.airline-name {
+  font-weight: 600;
+  color: #111827;
+}
+
+.flight-number {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.amount {
+  font-weight: 700;
+  font-size: 20px;
+  color: #111827;
+}
+
+.type {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.flight-route {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.departure, .arrival {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100px;
+}
+
+.time {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.airport {
+  font-size: 14px;
+  color: #4b5563;
+  margin-top: 4px;
+}
+
+.route-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.duration {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.route-line {
+  width: 100%;
+  position: relative;
+  height: 2px;
+  background-color: #e5e7eb;
+}
+
+.route-line::before,
+.route-line::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.route-line::before {
+  left: 0;
+}
+
+.route-line::after {
+  right: 0;
+}
+
+.stops-indicator {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.stops-indicator.non-stop {
+  color: #059669;
+  font-weight: 500;
+}
+
+.flight-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.select-btn {
+  padding: 10px 20px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  align-self: flex-end;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.select-btn:hover {
+  background-color: #2563eb;
 }
 
 /* Responsive Design */
@@ -403,16 +775,34 @@ if (props.flights.length) {
   .filters-panel {
     width: 100%;
   }
+  
+  .flight-route {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .departure, .arrival {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .route-info {
+    padding: 16px 0;
+  }
 }
 
 /* Transitions */
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .slide-enter-from,
 .slide-leave-to {
-  transform: translateX(-100%);
+  transform: translateX(-20px);
+  opacity: 0;
 }
 </style>
+
+ 

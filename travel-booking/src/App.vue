@@ -5,11 +5,11 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <a href="/" class="text-2xl font-bold text-blue-600">TravelEase</a>
+            <router-link :to="{ name: 'home' }" class="text-2xl font-bold text-blue-600">TravelEase</router-link>
           </div>
           <div class="flex items-center space-x-4">
-            <a href="/" class="text-gray-700 hover:text-blue-600">Home</a>
-            <a href="/flights" class="text-gray-700 hover:text-blue-600">Flights</a>
+            <router-link :to="{ name: 'home' }" class="text-gray-700 hover:text-blue-600">Home</router-link>
+            <router-link :to="{ name: 'flight-results' }" class="text-gray-700 hover:text-blue-600">Flights</router-link>
             <a href="#" class="text-gray-700 hover:text-blue-600">Hotels</a>
             <a href="#" class="text-gray-700 hover:text-blue-600">Contact</a>
           </div>
@@ -17,26 +17,16 @@
       </div>
     </nav>
 
-    <!-- Main Content -->
-    <main>
-      <!-- Debug Message -->
-      <div class="bg-blue-500 text-white p-4 mb-4">
-        Debug: Navigation and Booking
-      </div>
-
-      <!-- Booking Section -->
-      <div class="py-8">
-        <BookingSection />
-      </div>
-    </main>
+    <!-- Router View -->
+    <router-view></router-view>
   </div>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
-import BookingSection from './components/BookingSection.vue'
+import { useRouter } from 'vue-router'
 
 onMounted(() => {
-  console.log('App mounted with BookingSection')
+  console.log('App mounted')
 })
 </script>

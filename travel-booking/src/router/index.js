@@ -1,30 +1,28 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import HomePage from '../pages/HomePage.vue';
-import FlightResultsPage from '../pages/FlightResultsPage.vue';
-
-const routes = [
-  {
-    path: '/home',
-    name: 'home',
-    component: HomePage
-  },
-  {
-    path: '/flights',
-    name: 'flight-results',
-    component: FlightResultsPage,
-    props: true
-  }
-];
+import { createRouter, createWebHistory } from 'vue-router'
+import HomePage from '../pages/HomePage.vue'
+import FlightResultsPage from '../pages/FlightResultsPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
-  routes,
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomePage
+    },
+    {
+      path: '/flights',
+      name: 'flight-results',
+      component: FlightResultsPage
+    }
+  ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
-      return savedPosition;
+      return savedPosition
+    } else {
+      return { top: 0 }
     }
-    return { top: 0 };
   }
-});
+})
 
-export default router;
+export default router
