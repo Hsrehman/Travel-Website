@@ -120,7 +120,14 @@
             v-for="flight in sortedFlights" 
             :key="flight.id" 
             class="flight-card"
+            :class="{ 'expanded': expandedFlightId === flight.id }"
           >
+            <!-- Price in top right corner -->
+            <div class="flight-price-corner">
+              <span class="amount">${{ flight.price }}</span>
+              <span class="price-label">per person</span>
+            </div>
+            
             <!-- Airline Info -->
             <div class="airline-info">
               <img 
@@ -130,11 +137,7 @@
               />
               <div class="airline-details">
                 <span class="airline-name">{{ flight.airlineName }}</span>
-                <span class="flight-number">{{ flight.flightNumber }}</span>
-              </div>
-              <div class="price">
-                <span class="amount">${{ flight.price }}</span>
-                <span class="type">per person</span>
+                <span class="flight-number">{{ flight.airlineCode }} {{ flight.flightNumber }}</span>
               </div>
             </div>
 
@@ -147,10 +150,15 @@
 
               <div class="route-info">
                 <div class="duration">{{ formatDuration(flight.duration) }}</div>
-                <div class="route-line">
+                <div 
+                  class="route-line"
+                  @click="flight.stops > 0 && toggleFlightDetails(flight.id)"
+                  :class="{ 'clickable': flight.stops > 0 }"
+                >
                   <span 
                     class="stops-indicator"
                     :class="{ 'non-stop': flight.stops === 0 }"
+                    @click.stop="flight.stops > 0 && toggleFlightDetails(flight.id)"
                   >
                     {{ flight.stops === 0 ? 'Non-stop' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}` }}
                   </span>
@@ -163,24 +171,129 @@
               </div>
             </div>
 
-            <!-- Flight Details -->
-            <div class="flight-details">
-              <div class="detail-item">
-                <span class="label">Aircraft:</span>
-                <span>{{ flight.aircraft }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">Baggage:</span>
-                <span>{{ flight.baggage }}</span>
+            <!-- Action Buttons -->
+            <div class="flight-actions">
+              <div class="action-buttons">
+                <button 
+                  class="view-details-btn"
+                  @click="toggleFlightDetails(flight.id)"
+                >
+                  {{ expandedFlightId === flight.id ? 'Hide Details' : 'View Details' }}
+                </button>
+                <button 
+                  class="select-btn"
+                  @click="selectFlight(flight)"
+                >
+                  Select
+                </button>
               </div>
             </div>
 
-            <button 
-              class="select-btn"
-              @click="selectFlight(flight)"
-            >
-              Select Flight
-            </button>
+            <!-- Expanded Flight Segments -->
+            <transition name="expand">
+              <div v-if="expandedFlightId === flight.id" class="flight-segments">
+                <div class="segment-divider">
+                  <span>Flight Segments</span>
+                </div>
+                
+                <!-- Group segments by date -->
+                <template v-if="flight.segments && flight.segments.length > 0">
+                  <template v-for="(segment, index) in flight.segments" :key="index">
+                    <!-- Date heading -->
+                    <div v-if="index === 0 || new Date(segment.departureTime).toDateString() !== new Date(flight.segments[index-1].departureTime).toDateString()" class="date-heading">
+                      {{ formatDate(segment.departureTime) }}
+                    </div>
+                    
+                    <!-- Segment Details -->
+                    <div class="segment-card">
+                      <div class="airline-row">
+                        <div class="segment-airline">
+                          <img 
+                            :src="getAirlineLogo(segment.airline)" 
+                            :alt="segment.airline"
+                            class="segment-airline-logo"
+                          />
+                          <span class="segment-flight-number">{{ segment.airline }} {{ segment.flightNumber }}</span>
+                        </div>
+                        
+                        <div class="segment-route">
+                          <div class="segment-departure">
+                            <div class="segment-time">{{ formatTime(segment.departureTime) }}</div>
+                            <div class="segment-airport">{{ segment.from }}</div>
+                          </div>
+                          
+                          <div class="segment-duration">
+                            <div class="duration-label">{{ formatDuration(new Date(segment.arrivalTime) - new Date(segment.departureTime)) }}</div>
+                            <div class="duration-line"></div>
+                          </div>
+                          
+                          <div class="segment-arrival">
+                            <div class="segment-time">
+                              {{ formatTime(segment.arrivalTime) }}
+                              <span v-if="new Date(segment.arrivalTime).getDate() > new Date(segment.departureTime).getDate()" class="next-day">+{{ new Date(segment.arrivalTime).getDate() - new Date(segment.departureTime).getDate() }}D</span>
+                            </div>
+                            <div class="segment-airport">{{ segment.to }}</div>
+                          </div>
+                        </div>
+                        
+                        <div class="segment-class">
+                          <span class="label">Class:</span>
+                          <span>{{ segment.class }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Layover information between segments -->
+                    <div class="layover-container" v-if="index < flight.segments.length - 1">
+                      <div class="layover-line"></div>
+                      <div class="layover-badge">
+                        {{ getLayoverDuration(segment.arrivalTime, flight.segments[index+1].departureTime) }} layover in {{ segment.to }}
+                      </div>
+                      <div class="layover-line"></div>
+                    </div>
+
+                  </template>
+                </template>
+                
+                <!-- Fallback when no segments data is available -->
+                <div v-else class="no-segments-fallback">
+                  <div class="segment-card">
+                    <div class="segment-fallback-content">
+                      <div class="segment-airline">
+                        <img 
+                          :src="getAirlineLogo(flight.airlineCode)" 
+                          :alt="flight.airlineName"
+                          class="segment-airline-logo"
+                        />
+                        <span class="segment-flight-number">{{ flight.airlineCode }} {{ flight.flightNumber }}</span>
+                      </div>
+                      
+                      <div class="segment-route">
+                        <div class="segment-departure">
+                          <div class="segment-time">{{ formatTime(flight.departureTime) }}</div>
+                          <div class="segment-airport">{{ flight.departureAirport }}</div>
+                        </div>
+                        
+                        <div class="segment-duration">
+                          <div class="duration-label">{{ formatDuration(flight.duration) }}</div>
+                          <div class="duration-line"></div>
+                        </div>
+                        
+                        <div class="segment-arrival">
+                          <div class="segment-time">{{ formatTime(flight.arrivalTime) }}</div>
+                          <div class="segment-airport">{{ flight.arrivalAirport }}</div>
+                        </div>
+                      </div>
+                      
+                      <div class="segment-class">
+                        <span class="label">{{ flight.stops === 1 ? '1 stop' : `${flight.stops} stops` }}</span>
+                        <span>Flight details not available</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
       </div>
@@ -208,6 +321,7 @@ const emit = defineEmits(['flight-selected']);
 // State
 const showFilters = ref(true);
 const sortBy = ref('price');
+const expandedFlightId = ref(null);
 const filters = ref({
   maxPrice: Infinity,
   airlines: [],
@@ -351,18 +465,52 @@ const formatTime = (timeValue) => {
   }
 };
 
-const formatDuration = (minutes) => {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours}h ${mins}m`;
+const formatDuration = (duration) => {
+  // If duration is in milliseconds (common from Date operations)
+  if (duration > 1000) {
+    duration = Math.floor(duration / (1000 * 60)); // Convert ms to minutes
+  }
+  
+  const hours = Math.floor(duration / 60);
+  const mins = Math.floor(duration % 60);
+  return `${hours}h ${mins.toString().padStart(2, '0')}m`;
 };
 
 const getAirlineLogo = (code) => {
   return `https://www.gstatic.com/flights/airline_logos/70px/${code}.png`;
 };
 
+const toggleFlightDetails = (flightId) => {
+  expandedFlightId.value = expandedFlightId.value === flightId ? null : flightId;
+};
+
 const selectFlight = (flight) => {
   emit('flight-selected', flight);
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch (err) {
+    console.error('Error formatting date:', err);
+    return 'N/A';
+  }
+};
+
+const getLayoverDuration = (arrivalTime, departureTime) => {
+  const arrival = new Date(arrivalTime);
+  const departure = new Date(departureTime);
+  const diffMs = departure - arrival;
+  const diffMinutes = Math.round(diffMs / 60000);
+  return formatDuration(diffMinutes);
 };
 
 const resetFilters = () => {
@@ -592,11 +740,33 @@ if (props.flights.length) {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
 }
 
 .flight-card:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
+}
+
+.flight-price-corner {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  text-align: right;
+  line-height: 1.2;
+}
+
+.flight-price-corner .amount {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a237e;
+}
+
+.flight-price-corner .price-label {
+  font-size: 0.75rem;
+  color: #666;
+  opacity: 0.9;
 }
 
 .airline-info {
@@ -627,23 +797,6 @@ if (props.flights.length) {
 
 .flight-number {
   font-size: 13px;
-  color: #6b7280;
-}
-
-.price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.amount {
-  font-weight: 700;
-  font-size: 20px;
-  color: #111827;
-}
-
-.type {
-  font-size: 12px;
   color: #6b7280;
 }
 
@@ -731,23 +884,56 @@ if (props.flights.length) {
   font-weight: 500;
 }
 
-.flight-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 16px 0;
+.route-line.clickable,
+.stops-indicator:not(.non-stop) {
+  cursor: pointer;
+}
+
+.route-line.clickable:hover,
+.stops-indicator:not(.non-stop):hover {
+  opacity: 0.8;
+}
+
+.flight-actions {
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid #f3f4f6;
-}
-
-.detail-item {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
 }
 
-.label {
-  font-size: 13px;
-  color: #6b7280;
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.price {
+  display: none;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.view-details-btn {
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  background: white;
+  color: #1a73e8;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.view-details-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #c2e0ff;
+}
+
+.view-details-btn:active {
+  background-color: #e8f0fe;
 }
 
 .select-btn {
@@ -792,6 +978,211 @@ if (props.flights.length) {
   }
 }
 
+/* Expanded Flight Segments */
+.flight-segments {
+  margin-top: 16px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segment-divider {
+  padding: 12px 16px;
+  background-color: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 500;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.date-heading {
+  padding: 6px 14px;
+  background-color: #dbeafe;
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  margin: 8px 0 8px 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.segment-card {
+  background-color: white;
+  margin: 12px 16px;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.airline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.segment-airline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.segment-airline-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.segment-flight-number {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.segment-route {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.segment-departure, .segment-arrival {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.segment-time {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.segment-airport {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.segment-duration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12px;
+}
+
+.duration-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.duration-line {
+  width: 100px;
+  height: 1px;
+  background-color: #e5e7eb;
+  position: relative;
+}
+
+.duration-line::before,
+.duration-line::after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #e5e7eb;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.duration-line::before {
+  left: 0;
+}
+
+.duration-line::after {
+  right: 0;
+}
+
+.segment-class {
+  min-width: 100px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.segment-fallback-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.no-segments-fallback {
+  padding: 16px;
+}
+
+.next-day {
+  font-size: 11px;
+  color: #dc2626;
+  margin-left: 2px;
+  font-weight: 500;
+}
+
+.layover-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0;
+  padding: 0 16px;
+  position: relative;
+}
+
+.layover-line {
+  flex: 1;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 0 12px;
+}
+
+.layover-badge {
+  background-color: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #fcd34d;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+
+.date-heading {
+  margin: 16px 0 8px 16px;
+  display: inline-block;
+}
+
+/* Transitions */
+.expand-enter-active,
+.expand-leave-active {
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  max-height: 1500px;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 /* Transitions */
 .slide-enter-active,
 .slide-leave-active {
@@ -804,5 +1195,3 @@ if (props.flights.length) {
   opacity: 0;
 }
 </style>
-
- 

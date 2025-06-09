@@ -93,27 +93,43 @@ const processedFlights = computed(() => {
     const firstLeg = flight.outboundFlights[0] || {};
     const lastLeg = flight.outboundFlights[flight.outboundFlights.length - 1] || {};
     
+    // Create segments array for multi-leg flights
+    const segments = flight.outboundFlights.map(leg => {
+      // Format departure and arrival times to ISO string format
+      const departureDateTime = `${leg.departureDate}T${leg.departureTime}:00`;
+      const arrivalDateTime = `${leg.arrivalDate}T${leg.arrivalTime}:00`;
+      
+      return {
+        departureTime: departureDateTime,
+        arrivalTime: arrivalDateTime,
+        from: leg.departureCode,
+        to: leg.destinationCode,
+        airline: leg.airlineCode,
+        flightNumber: leg.flightNumber,
+        class: getCabinClassLabel(leg.cabinClass || 'E')
+      };
+    });
+    
     return {
       id: flight.id,
       airlineCode: firstLeg.airlineCode,
       airlineName: getAirlineName(firstLeg.airlineCode),
       flightNumber: firstLeg.flightNumber,
-      departureTime: firstLeg.departureTime,
-      arrivalTime: lastLeg.arrivalTime,
+      departureTime: firstLeg.departureDate && firstLeg.departureTime ? 
+                    `${firstLeg.departureDate}T${firstLeg.departureTime}:00` : null,
+      arrivalTime: lastLeg.arrivalDate && lastLeg.arrivalTime ? 
+                  `${lastLeg.arrivalDate}T${lastLeg.arrivalTime}:00` : null,
       departureAirport: firstLeg.departureCode,
       arrivalAirport: lastLeg.destinationCode,
       duration: flight.outboundFlights.reduce((total, leg) => total + leg.duration, 0),
       stops: flight.outboundFlights.length - 1,
       price: flight.price,
       currency: flight.currency,
-      aircraft: firstLeg.aircraft,
-      baggage: '23kg included', // This should come from API
-      seatsLeft: Math.floor(Math.random() * 9) + 1, // This should come from API
       layover: flight.outboundFlights.length > 1 ? {
         duration: firstLeg.connectionTime,
         airport: flight.outboundFlights[1].departureAirport
       } : null,
-      freeCancellation: false // This should come from API
+      segments: segments
     };
   });
 })
@@ -167,6 +183,17 @@ function selectFlight(flight) {
 const formatDate = (dateString) => {
   const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
   return new Date(dateString).toLocaleDateString('en-US', options)
+}
+
+// Translate cabin class code to readable label
+const getCabinClassLabel = (classCode) => {
+  const cabinClasses = {
+    'E': 'Economy',
+    'P': 'Premium Economy',
+    'B': 'Business',
+    'F': 'First Class'
+  }
+  return cabinClasses[classCode] || 'Economy'
 }
 
 // Get airline name from code
