@@ -143,8 +143,15 @@
             <!-- Baggage Indicator (ALWAYS VISIBLE) -->
             <div class="baggage-indicator highlight">
               <span class="baggage-icon">🧳</span>
-              <span>Baggage: Awaiting API data</span>
-              <span class="api-status" v-if="flight.baggageAllowance">(API connected)</span>
+              <span v-if="!flight.baggageAllowance">Baggage: Loading...</span>
+              <template v-else>
+                <span v-if="flight.baggageAllowance.included">
+                  {{ formatBaggageAllowance(flight.baggageAllowance) }}
+                </span>
+                <span v-else>
+                  {{ flight.baggageAllowance.value || 'Baggage information not available' }}
+                </span>
+              </template>
             </div>
 
             <!-- Flight Route -->
